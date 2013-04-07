@@ -91,7 +91,7 @@ end
 namespace :nginx do
   desc "restart Nginx server"
   task :restart do
-    run "#{sudo} mv #{application_path}/config/deploy/nginx_template.erb /etc/nginx/sites-available/#{application}"
+    run "#{sudo} cp #{application_path}/config/deploy/nginx_template.erb /etc/nginx/sites-available/#{application}"
     run "#{sudo} ln -fs /etc/nginx/sites-available/#{application} /etc/nginx/sites-enabled/#{application}"
     run "#{sudo} /etc/init.d/nginx restart"
   end
