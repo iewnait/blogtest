@@ -35,7 +35,7 @@ gem 'thin'
 
 # Deploy with Capistrano
 gem 'capistrano'
-gem 'rvm-capistrano'
+gem 'rvm-capistrano', '1.3.0.rc11'
 
 # To use debugger
 # gem 'debugger'

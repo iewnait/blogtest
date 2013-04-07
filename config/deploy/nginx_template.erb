@@ -1,0 +1,84 @@
+upstream blogtest {
+	server 127.0.0.1:3000;
+	server 127.0.0.1:3001;
+	server 127.0.0.1:3002;
+	server 127.0.0.1:3003;
+}
+
+#server {
+#	listen 80 default;
+#
+#        root /home/deployer/apps/LabCollab/public;
+#        access_log /var/log/nginx/LabQS_access.log;
+#        rewrite_log on;
+#        index index.html index.htm;
+#
+#	# Make site accessible from http://localhost/
+#        # server_name localhost;
+#        location / {
+#                #all requests are sent to the UNIX socket
+#                proxy_pass  http://LabQS;
+#                proxy_redirect     off;
+#
+#                proxy_set_header   Host             $host;
+#                proxy_set_header   X-Real-IP        $remote_addr;
+#                proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+#
+#                client_max_body_size       10m;
+#                client_body_buffer_size    128k;
+#
+#                proxy_connect_timeout      90;
+#                proxy_send_timeout         90;
+#                proxy_read_timeout         90;
+#
+#                proxy_buffer_size          4k;
+#                proxy_buffers              4 32k;
+#                proxy_busy_buffers_size    64k;
+#                proxy_temp_file_write_size 64k;
+#        }
+#
+#}
+
+server {
+        listen    80;
+        server_name ec2-54-241-27-129.us-west-1.compute.amazonaws.com;
+        rewrite     ^   https://$server_name$request_uri? permanent;
+}
+
+server {
+	listen   443;
+	server_name ec2-54-241-27-129.us-west-1.compute.amazonaws.com;
+	ssl on;
+	ssl_certificate     /home/deployer/apps/blogtest/current/config/ssl/certs/server.crt;
+	ssl_certificate_key /home/deployer/apps/blogtest/current/config/ssl/certs/server.key;
+	root /home/deployer/apps/blogtest/current/public;
+	access_log /var/log/nginx/blogtest_access.log;
+	rewrite_log on;
+	index index.html index.htm;
+
+	location / {
+		proxy_set_header X_FORWARDED_PROTO https;
+		proxy_set_header  X-Real-IP  $remote_addr;
+		proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header Host $http_host;
+		proxy_redirect off;
+
+		client_max_body_size       10m;
+		client_body_buffer_size    128k;
+
+		proxy_connect_timeout      90;
+		proxy_send_timeout         90;
+		proxy_read_timeout         90;
+
+		proxy_buffer_size          4k;
+		proxy_buffers              4 32k;
+		proxy_busy_buffers_size    64k;
+		proxy_temp_file_write_size 64k;
+
+		try_files /system/maintenance.html $uri $uri/index.html $uri.html @ruby;
+	}
+
+	location @ruby {
+		proxy_pass  http://blogtest;
+	}
+}

@@ -3,6 +3,7 @@ set :default_stage, "sandbox"
 require 'capistrano/ext/multistage'
 
 set :application, "blogtest"
+set :application_path, "/home/deployer/apps/blogtest/current"
 set :repository,  "git@github.com:iewnait/blogtest.git"
 
 default_run_options[:pty] = true
@@ -16,9 +17,9 @@ set :user, "deployer"
 set :use_sudo, false
 
 set :rvm_ruby_string, "1.9.3-p327@#{application}"
-set :rvm_install_ruby_params, '--1.9'      # for jruby/rbx default to 1.9 mode
+#set :rvm_install_ruby_params, '--1.9'      # for jruby/rbx default to 1.9 mode
 set :rvm_install_pkgs, %w[libyaml openssl] # package list from https://rvm.io/packages
-set :rvm_install_ruby_params, '--with-opt-dir=/usr/local/rvm/usr' # package support
+set :rvm_install_ruby_params, '--with-opt-dir=/usr/local/rvm/usr ' # package support
 
 before 'deploy:setup', 'rvm:install_rvm'   # install RVM
 before 'deploy:setup', 'rvm:install_pkgs'  # install RVM packages before Ruby
@@ -46,14 +47,14 @@ namespace :deploy do
   desc "Start the Thin processes"
   task :start do
     run  <<-CMD
-      cd /home/deployer/apps/blogtest/current; bundle exec thin -e #{rails_env} start -s 4 -P /home/deployer/
+      cd #{application_path}; bundle exec thin -e #{rails_env} start -s 4 -P /home/deployer/
     CMD
   end
 
   desc "Stop the Thin processes"
   task :stop do
     run <<-CMD
-      cd /home/deployer/apps/blogtest/current; bundle exec thin stop -s 4 -P /home/deployer/; rm ./log; rm -rf ./tmp
+      cd #{application_path}; bundle exec thin stop -s 4 -P /home/deployer/; rm ./log; rm -rf ./tmp
     CMD
   end
 
@@ -66,7 +67,7 @@ namespace :deploy do
   desc "precompile asset"
   task :precompile_assets do
     run  <<-CMD
-      cd /home/deployer/apps/blogtest/current; bundle exec rake assets:precompile
+      cd #{application_path}; bundle exec rake assets:precompile
     CMD
   end
 end
@@ -75,15 +76,24 @@ namespace :delayed_job do
   desc "Start the delayed job process"
   task :start do
     run  <<-CMD
-      cd /home/deployer/apps/blogtest/current; RAILS_ENV=production bundle exec script/delayed_job -n 2 start --pid-dir=/home/deployer/
+      cd #{application_path}; RAILS_ENV=production bundle exec script/delayed_job -n 2 start --pid-dir=/home/deployer/
     CMD
   end
 
   desc "Stop the delayed job process"
   task :stop do
     run <<-CMD
-      cd /home/deployer/apps/blogtest/current; RAILS_ENV=production bundle exec script/delayed_job stop --pid-dir=/home/deployer/
+      cd #{application_path}; RAILS_ENV=production bundle exec script/delayed_job stop --pid-dir=/home/deployer/
     CMD
+  end
+end
+
+namespace :nginx do
+  desc "restart Nginx server"
+  task :restart do
+    run "#{sudo} mv #{application_path}/config/deploy/nginx_template /etc/nginx/sites-available/#{application}"
+    run "#{sudo} ln -fs /etc/nginx/sites-available/#{application} /etc/nginx/sites-enabled/#{application}"
+    run "#{sudo} /etc/init.d/nginx restart"
   end
 end
 
@@ -100,5 +110,6 @@ end
 
 after "deploy:start", "delayed_job:start"
 after "deploy:stop", "delayed_job:stop"
+before "deploy:restart", "bundle:install"
 before "deploy:restart", "bundle:install"
 before "deploy:restart", "deploy:precompile_assets"
