@@ -46,14 +46,14 @@ namespace :deploy do
   desc "Start the Thin processes"
   task :start do
     run  <<-CMD
-      cd /home/deployer/apps/blogtest/current; bundle exec thin start -s 4
+      cd /home/deployer/apps/blogtest/current; bundle exec thin -e #{rails_env} start -s 4 -P /home/deployer/
     CMD
   end
 
   desc "Stop the Thin processes"
   task :stop do
     run <<-CMD
-      cd /home/deployer/apps/blogtest/current; bundle exec thin stop -s 4; rm ./log; rm -rf ./tmp
+      cd /home/deployer/apps/blogtest/current; bundle exec thin stop -s 4 -P /home/deployer/; rm ./log; rm -rf ./tmp
     CMD
   end
 
@@ -71,6 +71,22 @@ namespace :deploy do
   end
 end
 
+namespace :delayed_job do
+  desc "Start the delayed job process"
+  task :start do
+    run  <<-CMD
+      cd /home/deployer/apps/blogtest/current; RAILS_ENV=production bundle exec script/delayed_job -n 2 start --pid-dir=/home/deployer/
+    CMD
+  end
+
+  desc "Stop the delayed job process"
+  task :stop do
+    run <<-CMD
+      cd /home/deployer/apps/blogtest/current; RAILS_ENV=production bundle exec script/delayed_job stop --pid-dir=/home/deployer/
+    CMD
+  end
+end
+
 namespace :bundle do
 
   desc "run bundle install and ensure all gem requirements are met"
@@ -82,5 +98,7 @@ namespace :bundle do
 
 end
 
+after "deploy:start", "delayed_job:start"
+after "deploy:stop", "delayed_job:stop"
 before "deploy:restart", "bundle:install"
 before "deploy:restart", "deploy:precompile_assets"
